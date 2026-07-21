@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CC Tracker - Cloud Sync</title>
+    <!-- Logo / Favicon Status Bar -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233b82f6'><path d='M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z'/></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -227,11 +229,11 @@
                         <table class="w-full text-sm text-left text-gray-600 dark:text-gray-400">
                             <thead class="text-xs uppercase bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
                                 <tr>
-                                    <th class="px-6 py-4 font-medium">Kartu</th>
-                                    <th class="px-6 py-4 font-medium">Nominal</th>
-                                    <th class="px-6 py-4 font-medium">Jatuh Tempo</th>
-                                    <th class="px-6 py-4 font-medium">Status</th>
-                                    <th class="px-6 py-4 font-medium text-right">Aksi</th>
+                                    <th class="px-3 py-3 md:px-6 md:py-4 font-medium whitespace-nowrap">Kartu</th>
+                                    <th class="px-3 py-3 md:px-6 md:py-4 font-medium whitespace-nowrap">Nominal</th>
+                                    <th class="px-3 py-3 md:px-6 md:py-4 font-medium whitespace-nowrap">Jatuh Tempo</th>
+                                    <th class="px-3 py-3 md:px-6 md:py-4 font-medium whitespace-nowrap">Status</th>
+                                    <th class="px-3 py-3 md:px-6 md:py-4 font-medium text-right whitespace-nowrap">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="dash-due-table" class="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -701,24 +703,27 @@
                     const card = db.cards.find(c => c.id === bill.cardId);
                     const cardName = card ? `${card.bank} (...${card.last4})` : 'Dihapus';
 
+                    // Badge status yang disesuaikan agar tidak berantakan di HP
                     const statusBadge = bill.isPaid
-                        ? `<span class="px-2.5 py-1 text-xs rounded border bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700">Lunas</span>`
-                        : `<span class="px-2.5 py-1 text-xs rounded border bg-red-50 text-red-600 border-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50">Belum Lunas</span>`;
+                        ? `<span class="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1 text-xs rounded-full font-medium bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700"><i class="fa-solid fa-circle-check text-green-500 text-[10px]"></i> Lunas</span>`
+                        : `<span class="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1 text-xs rounded-full font-semibold bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50"><i class="fa-solid fa-circle-exclamation text-red-500 text-[10px]"></i> Belum Lunas</span>`;
 
-                    const dueInfo = bill.isPaid ? `<span class="text-gray-400 line-through">${formatDate(bill.dueDate)}</span>` : `<span class="${getDueDateStatus(bill.dueDate).class}">${formatDate(bill.dueDate)} <span class="text-xs">(${getDueDateStatus(bill.dueDate).text})</span></span>`;
+                    const dueInfo = bill.isPaid 
+                        ? `<span class="whitespace-nowrap text-gray-400 line-through text-xs md:text-sm">${formatDate(bill.dueDate)}</span>` 
+                        : `<span class="whitespace-nowrap text-xs md:text-sm ${getDueDateStatus(bill.dueDate).class}">${formatDate(bill.dueDate)} <span class="text-[11px] md:text-xs ml-1 font-medium">(${getDueDateStatus(bill.dueDate).text})</span></span>`;
 
                     const actionBtn = bill.isPaid
-                        ? `<span class="text-gray-400 text-xs"><i class="fa-solid fa-check"></i> Selesai</span>`
-                        : `<button onclick="markAsPaid('${bill.id}')" class="text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-xs font-medium transition">Tandai Lunas</button>`;
+                        ? `<span class="whitespace-nowrap text-gray-400 text-xs"><i class="fa-solid fa-check"></i> Selesai</span>`
+                        : `<button onclick="markAsPaid('${bill.id}')" class="whitespace-nowrap text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 px-2.5 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">Tandai Lunas</button>`;
 
                     const tr = document.createElement('tr');
                     tr.className = 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors';
                     tr.innerHTML = `
-                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">${cardName}</td>
-                        <td class="px-6 py-4 font-medium ${bill.isPaid ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}">${formatRupiah(bill.amount)}</td>
-                        <td class="px-6 py-4">${dueInfo}</td>
-                        <td class="px-6 py-4">${statusBadge}</td>
-                        <td class="px-6 py-4 text-right">${actionBtn}</td>
+                        <td class="px-3 py-3 md:px-6 md:py-4 font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">${cardName}</td>
+                        <td class="px-3 py-3 md:px-6 md:py-4 font-medium whitespace-nowrap ${bill.isPaid ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}">${formatRupiah(bill.amount)}</td>
+                        <td class="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap">${dueInfo}</td>
+                        <td class="px-3 py-3 md:px-6 md:py-4 whitespace-nowrap">${statusBadge}</td>
+                        <td class="px-3 py-3 md:px-6 md:py-4 text-right whitespace-nowrap">${actionBtn}</td>
                     `;
                     tbody.appendChild(tr);
                 });
