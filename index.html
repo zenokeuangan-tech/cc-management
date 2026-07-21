@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CC Tracker - Minimalist</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .hide {
+            display: none !important;
+        }
+
+        .toast {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        *,
+        *::before,
+        *::after {
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+
+        /* PIN input styling */
+        input[type="password"] {
+            font-family: monospace;
+            letter-spacing: 0.5em;
+        }
+    </style>
+</head>
+
+<body class="text-gray-800 bg-gray-50 dark:bg-gray-900 dark:text-gray-100 h-screen flex overflow-hidden">
+
+    <!-- Latar Keamanan (PIN Overlay) -->
+    <div id="pin-overlay"
+        class="fixed inset-0 bg-gray-50 dark:bg-gray-950 z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
+        <div
+            class="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-xl max-w-sm w-full text-center border border-gray-200 dark:border-gray-800">
+            <div
+                class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-lock text-2xl text-gray-700 dark:text-gray-300"></i>
+            </div>
+            <h2 id="pin-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">CC Tracker</h2>
+            <p id="pin-desc" class="text-sm text-gray-500 dark:text-gray-400 mb-6">Memuat keamanan...</p>
+
+            <input type="password" id="pin-input" inputmode="numeric" maxlength="6"
+                class="w-full text-center text-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500 transition mb-4"
+                placeholder="••••">
+            <p id="pin-error" class="text-red-500 text-sm mb-4 hide font-medium"></p>
+
+            <button onclick="submitPin()"
+                class="w-full bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 py-3 rounded-xl font-medium transition">Konfirmasi</button>
+            <button onclick="resetPinData()" id="btn-reset-pin"
+                class="mt-5 text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 hide transition">Lupa PIN?
+                (Reset Seluruh Data)</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast"
+        class="fixed top-5 right-5 bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-900 px-6 py-3 rounded-lg shadow-lg opacity-0 hide z-50 flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-green-400 dark:text-green-600"></i>
+        <span id="toast-message" class="font-medium text-sm">Notifikasi</span>
+    </div>
+
+    <!-- Universal Confirm Modal -->
+    <div id="modal-confirm"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center hide">
+        <div
+            class="bg-white dark:bg-gray-800 rounded-xl w-full max-w-sm p-6 m-4 shadow-2xl border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2" id="confirm-title">Konfirmasi</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm mb-6" id="confirm-message">Apakah Anda yakin?</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeConfirmModal()"
+                    class="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition">Batal</button>
+                <button onclick="executeConfirm()"
+                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition">Ya,
+                    Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside
+        class="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300 md:relative absolute z-40 h-full transform -translate-x-full md:translate-x-0"
+        id="sidebar">
+        <div class="p-6 flex items-center justify-between">
+            <h1 class="text-xl font-bold text-gray-900 dark:text-white tracking-tight"><i
+                    class="fa-solid fa-infinity mr-2 text-gray-500"></i>CC Tracker</h1>
+            <button class="md:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                onclick="toggleSidebar()"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <nav class="flex-1 px-4 space-y-1 mt-2">
+            <a href="#" onclick="navigate('dashboard')" id="nav-dashboard"
+                class="nav-item flex items-center p-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition font-medium">
+                <i class="fa-solid fa-chart-simple w-6"></i> Dasbor
+            </a>
+            <a href="#" onclick="navigate('cards')" id="nav-cards"
+                class="nav-item flex items-center p-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition font-medium">
+                <i class="fa-solid fa-wallet w-6"></i> Kartu Saya
+            </a>
+            <a href="#" onclick="navigate('input')" id="nav-input"
+                class="nav-item flex items-center p-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition font-medium">
+                <i class="fa-solid fa-pen-to-square w-6"></i> Input Tagihan
+            </a>
+            <a href="#" onclick="navigate('history')" id="nav-history"
+                class="nav-item flex items-center p-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition font-medium">
+                <i class="fa-solid fa-clock-rotate-left w-6"></i> Riwayat
+            </a>
+        </nav>
+        <div class="p-4 border-t border-gray-200 dark:border-gray-800 space-y-1">
+            <button onclick="exportData()"
+                class="w-full text-left text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center p-3 rounded-lg transition font-medium">
+                <i class="fa-solid fa-cloud-arrow-down w-6"></i> Backup Data
+            </button>
+            <label
+                class="w-full text-left text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center p-3 rounded-lg transition font-medium cursor-pointer">
+                <i class="fa-solid fa-cloud-arrow-up w-6"></i> Restore Data
+                <input type="file" accept=".json" class="hidden" onchange="importData(event)">
+            </label>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden relative bg-gray-50 dark:bg-gray-950">
+        <!-- Top Header -->
+        <header
+            class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-10 p-4 flex justify-between items-center h-16">
+            <div class="flex items-center gap-3">
+                <button class="md:hidden text-gray-600 dark:text-gray-400 focus:outline-none" onclick="toggleSidebar()">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100" id="page-title">Dasbor Utama</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- Tombol Lock Manual -->
+                <button onclick="lockApp()"
+                    class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                    title="Kunci Aplikasi">
+                    <i class="fa-solid fa-lock text-lg"></i>
+                </button>
+                <!-- Tombol Tema -->
+                <button onclick="toggleTheme()"
+                    class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                    title="Ubah Tema">
+                    <i class="fa-solid fa-moon dark:hidden text-lg"></i>
+                    <i class="fa-solid fa-sun hidden dark:block text-lg"></i>
+                </button>
+                <div
+                    class="h-8 w-8 rounded-full bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 flex items-center justify-center font-bold text-sm">
+                    A</div>
+            </div>
+        </header>
+
+        <!-- Scrollable Content Area -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8" id="main-content">
+
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="view-section">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <h3
+                            class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                            Tagihan Aktif</h3>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="dash-total-bill">Rp 0</p>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <h3
+                            class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                            Sisa Limit</h3>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="dash-remaining-limit">Rp 0</p>
+                        <div class="mt-3 w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1">
+                            <div class="bg-gray-800 dark:bg-gray-200 h-1 rounded-full transition-all duration-500"
+                                id="dash-limit-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <h3
+                            class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                            Reward Poin</h3>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="dash-total-points">0</p>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <h3
+                            class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                            Saldo Cashback</h3>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white" id="dash-total-cashback">Rp 0</p>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4">Tren 6 Bulan Terakhir
+                        </h3>
+                        <div class="relative h-60 w-full"><canvas id="trendChart"></canvas></div>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4">Porsi Tagihan Berjalan
+                        </h3>
+                        <div class="relative h-60 w-full flex justify-center"><canvas id="compositionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Due Dates Table -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                    <div
+                        class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Daftar Tagihan Bulan Ini</h3>
+                        <button onclick="markAllAsPaid()"
+                            class="text-xs bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 px-3 py-1.5 rounded-md font-medium transition">Lunas
+                            Semua</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-600 dark:text-gray-400">
+                            <thead
+                                class="text-xs uppercase bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4 font-medium">Kartu</th>
+                                    <th class="px-6 py-4 font-medium">Nominal</th>
+                                    <th class="px-6 py-4 font-medium">Jatuh Tempo</th>
+                                    <th class="px-6 py-4 font-medium">Status</th>
+                                    <th class="px-6 py-4 font-medium text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dash-due-table" class="divide-y divide-gray-100 dark:divide-gray-700/50">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: CARDS -->
+            <div id="view-cards" class="view-section hide">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-gray-600 dark:text-gray-400 text-sm">Kelola daftar kartu kredit Anda</h3>
+                    <button onclick="openCardModal()"
+                        class="bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-lg text-sm font-medium transition"><i
+                            class="fa-solid fa-plus mr-1"></i> Tambah Kartu</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="cards-container">
+                    <!-- Cards populated by JS -->
+                </div>
+            </div>
+
+            <!-- VIEW: INPUT TAGIHAN -->
+            <div id="view-input" class="view-section hide">
+                <div
+                    class="max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 md:p-8 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Catat Tagihan Baru</h3>
+                    <form id="form-bill" onsubmit="saveBill(event)">
+                        <div class="space-y-5 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Pilih
+                                    Kartu *</label>
+                                <select id="bill-card" required onchange="calculateAutoDueDate()"
+                                    class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500 transition">
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Nominal
+                                        Tagihan (Rp) *</label>
+                                    <input type="number" id="bill-amount" required min="0"
+                                        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 transition">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Jatuh
+                                        Tempo (Otomatis) *</label>
+                                    <input type="date" id="bill-duedate" required readonly
+                                        class="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-lg px-4 py-2.5 cursor-not-allowed">
+                                    <p class="text-xs text-gray-400 mt-1">15 hari setelah cetak tagihan</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-5 border-t border-gray-100 dark:border-gray-700/50">
+                            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-4">Reward & Cashback
+                                (Opsional)</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Poin
+                                        Didapat</label>
+                                    <input type="number" id="bill-points" value="0" min="0"
+                                        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Poin
+                                        Ditukarkan</label>
+                                    <input type="number" id="bill-redeem" value="0" min="0"
+                                        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cashback
+                                        (Rp)</label>
+                                    <input type="number" id="bill-cashback" value="0" min="0"
+                                        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button type="submit"
+                                    class="bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 px-6 py-2.5 rounded-lg font-medium transition w-full md:w-auto">Simpan
+                                    Tagihan</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- VIEW: HISTORY -->
+            <div id="view-history" class="view-section hide">
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                    <div
+                        class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center gap-4">
+                        <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Riwayat Tagihan</h3>
+                        <div class="flex gap-2">
+                            <button onclick="exportToCSV()"
+                                class="text-xs bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800/50 px-3 py-1.5 rounded-md font-medium transition flex items-center gap-1"><i
+                                    class="fa-solid fa-file-csv"></i> Ekspor CSV</button>
+                            <button onclick="deleteAllHistory()"
+                                class="text-xs bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-3 py-1.5 rounded-md font-medium transition">Hapus
+                                Semua</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-600 dark:text-gray-400">
+                            <thead
+                                class="text-xs uppercase bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4 font-medium">Bulan/Tahun</th>
+                                    <th class="px-6 py-4 font-medium">Kartu</th>
+                                    <th class="px-6 py-4 font-medium">Nominal</th>
+                                    <th class="px-6 py-4 font-medium">Poin/CB</th>
+                                    <th class="px-6 py-4 font-medium text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table" class="divide-y divide-gray-100 dark:divide-gray-700/50">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modal Form Kartu -->
+    <div id="modal-card" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hide">
+        <div
+            class="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md p-6 m-4 shadow-2xl border border-gray-200 dark:border-gray-700">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-card-title">Tambah Kartu</h3>
+                <button onclick="closeCardModal()"
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"><i
+                        class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            <form id="form-card" onsubmit="saveCard(event)">
+                <input type="hidden" id="card-id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Bank /
+                            Penerbit *</label>
+                        <input type="text" id="card-bank" required placeholder="Contoh: BCA Card"
+                            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">4 Digit Terakhir
+                            *</label>
+                        <input type="text" id="card-last4" required maxlength="4" pattern="\d{4}" placeholder="1234"
+                            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Limit Kartu (Rp)
+                            *</label>
+                        <input type="number" id="card-limit" required min="0"
+                            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Cetak
+                            Tagihan (1-31) *</label>
+                        <input type="number" id="card-statement" required min="1" max="31"
+                            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end gap-3">
+                    <button type="button" onclick="closeCardModal()"
+                        class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition">Batal</button>
+                    <button type="submit"
+                        class="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-medium transition">Simpan
+                        Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Overlay for mobile sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hide md:hide backdrop-blur-sm transition-opacity"
+        onclick="toggleSidebar()"></div>
+
+    <script>
+        // --- State & Theme Management ---
+        const DB_KEY = 'cc_tracker_data_v2';
+        const PIN_KEY = 'cc_tracker_pin';
+        let db = JSON.parse(localStorage.getItem(DB_KEY)) || { cards: [], bills: [] };
+        let trendChartInstance = null;
+        let compositionChartInstance = null;
+        let confirmAction = null;
+
+        // Inisialisasi Tema
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            if (trendChartInstance) renderCharts(db.bills.filter(b => !b.isPaid)); // Update warna chart
+        }
+
+        // --- PIN Security Logic ---
+        let savedPin = localStorage.getItem(PIN_KEY);
+        let pinMode = savedPin ? 'enter' : 'create';
+        let tempPin = '';
+
+        function initPinScreen() {
+            const title = document.getElementById('pin-title');
+            const desc = document.getElementById('pin-desc');
+            const resetBtn = document.getElementById('btn-reset-pin');
+            document.getElementById('pin-input').value = '';
+            document.getElementById('pin-error').classList.add('hide');
+
+            if (!savedPin) {
+                title.innerText = "Buat PIN Baru";
+                desc.innerText = "Buat 4-6 digit angka untuk mengamankan data Anda di browser ini.";
+                resetBtn.classList.add('hide');
+            } else {
+                title.innerText = "Masukkan PIN";
+                desc.innerText = "Aplikasi terkunci. Silakan masukkan PIN keamanan Anda.";
+                resetBtn.classList.remove('hide');
+            }
+            document.getElementById('pin-input').focus();
+        }
+
+        document.getElementById('pin-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') submitPin();
+        });
+
+        function submitPin() {
+            const input = document.getElementById('pin-input');
+            const val = input.value;
+            const error = document.getElementById('pin-error');
+            error.classList.add('hide');
+
+            if (val.length < 4) {
+                error.innerText = "PIN minimal terdiri dari 4 digit angka.";
+                error.classList.remove('hide');
+                return;
+            }
+
+            if (pinMode === 'create') {
+                tempPin = val;
+                pinMode = 'confirm';
+                input.value = '';
+                document.getElementById('pin-title').innerText = "Konfirmasi PIN";
+                document.getElementById('pin-desc').innerText = "Masukkan kembali PIN yang baru saja Anda buat.";
+            } else if (pinMode === 'confirm') {
+                if (val === tempPin) {
+                    localStorage.setItem(PIN_KEY, val);
+                    savedPin = val;
+                    unlockApp();
+                } else {
+                    error.innerText = "PIN tidak cocok. Silakan ulangi dari awal.";
+                    error.classList.remove('hide');
+                    pinMode = 'create';
+                    tempPin = '';
+                    setTimeout(initPinScreen, 1500);
+                }
+            } else if (pinMode === 'enter') {
+                if (val === savedPin) {
+                    unlockApp();
+                } else {
+                    error.innerText = "PIN salah. Coba lagi.";
+                    error.classList.remove('hide');
+                    input.value = '';
+                }
+            }
+        }
+
+        function unlockApp() {
+            document.getElementById('pin-overlay').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('pin-overlay').classList.add('hide');
+                navigate('dashboard'); // Mulai render saat sudah login
+            }, 300);
+        }
+
+        function lockApp() {
+            if (!savedPin) return showToast("Anda belum membuat PIN.");
+            pinMode = 'enter';
+            document.getElementById('pin-overlay').classList.remove('hide');
+            // Sedikit delay agar transisi CSS berjalan
+            setTimeout(() => {
+                document.getElementById('pin-overlay').classList.remove('opacity-0');
+                initPinScreen();
+            }, 10);
+        }
+
+        function resetPinData() {
+            openConfirmModal("Reset Aplikasi", "Anda lupa PIN? Jika dilanjutkan, ini akan menghapus PIN beserta SELURUH data kartu dan tagihan dari perangkat ini secara permanen.", () => {
+                localStorage.removeItem(PIN_KEY);
+                localStorage.removeItem(DB_KEY);
+                location.reload();
+            });
+        }
+
+        // --- Custom Modal Confirm ---
+        function openConfirmModal(title, message, actionCallback) {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = message;
+            confirmAction = actionCallback;
+            document.getElementById('modal-confirm').classList.remove('hide');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('modal-confirm').classList.add('hide');
+            confirmAction = null;
+        }
+
+        function executeConfirm() {
+            if (confirmAction) confirmAction();
+            closeConfirmModal();
+        }
+
+        // --- Utils & Persistence ---
+        function saveData() {
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+        }
+
+        function formatRupiah(number) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const options = { day: 'numeric', month: 'short', year: 'numeric' };
+            return new Date(dateStr).toLocaleDateString('id-ID', options);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = message;
+            toast.classList.remove('hide');
+            setTimeout(() => toast.classList.remove('opacity-0'), 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.classList.add('hide'), 300);
+            }, 3000);
+        }
+
+        // --- Data Backup & Restore ---
+        function exportData() {
+            const dataStr = JSON.stringify(db, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `CCTracker_Backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("Backup data JSON berhasil diunduh");
+        }
+
+        function exportToCSV() {
+            if (db.bills.length === 0) return showToast("Tidak ada riwayat tagihan untuk diekspor");
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            // Header CSV
+            csvContent += "ID Transaksi,Nama Kartu,Bulan Tagihan,Jatuh Tempo,Nominal (Rp),Status Lunas,Poin Didapat,Cashback (Rp)\n";
+
+            db.bills.forEach(b => {
+                const card = db.cards.find(c => c.id === b.cardId);
+                const cardName = card ? `"${card.bank}"` : '"Dihapus"';
+                const row = [
+                    b.id, cardName, b.month, b.dueDate, b.amount,
+                    b.isPaid ? 'Ya' : 'Tidak', b.points || 0, b.cashback || 0
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Laporan_Kartu_Kredit_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Laporan Excel (CSV) berhasil diunduh");
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData && importedData.cards && importedData.bills) {
+                        openConfirmModal("Restore Data", "Peringatan: Mengembalikan data akan menimpa data Anda saat ini. Lanjutkan?", () => {
+                            db = importedData;
+                            saveData();
+                            showToast("Data berhasil dipulihkan!");
+                            navigate('dashboard');
+                        });
+                    }
+                } catch (error) {
+                    showToast("Format file tidak valid.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // --- Navigation ---
+        function navigate(viewName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hide'));
+            document.getElementById(`view-${viewName}`).classList.remove('hide');
+
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-900', 'dark:text-white');
+            });
+            const activeNav = document.getElementById(`nav-${viewName}`);
+            activeNav.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-900', 'dark:text-white');
+
+            const titles = { 'dashboard': 'Dasbor Utama', 'cards': 'Kartu Saya', 'input': 'Input Tagihan', 'history': 'Riwayat' };
+            document.getElementById('page-title').innerText = titles[viewName];
+
+            if (window.innerWidth < 768) { toggleSidebar(); }
+
+            // Render Router
+            if (viewName === 'dashboard') renderDashboard();
+            if (viewName === 'cards') renderCards();
+            if (viewName === 'input') populateCardSelect();
+            if (viewName === 'history') renderHistory();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hide');
+        }
+
+        // --- Dashboard Logic ---
+        function getDueDateStatus(dueDateStr) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dueDate = new Date(dueDateStr);
+            const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) return { text: `Telat ${Math.abs(diffDays)}hr`, class: 'text-red-600 dark:text-red-400 font-bold' };
+            if (diffDays <= 3) return { text: `H-${diffDays}`, class: 'text-red-500 font-medium' };
+            if (diffDays <= 7) return { text: `H-${diffDays}`, class: 'text-yellow-600 dark:text-yellow-500' };
+            return { text: `H-${diffDays}`, class: 'text-gray-500 dark:text-gray-400' };
+        }
+
+        function renderDashboard() {
+            let totalLimit = db.cards.reduce((sum, card) => sum + Number(card.limit), 0);
+            let activeBills = db.bills.filter(b => !b.isPaid);
+            let totalActiveBill = activeBills.reduce((sum, bill) => sum + Number(bill.amount), 0);
+            let remainingLimit = totalLimit - totalActiveBill;
+
+            let totalPoints = db.bills.reduce((sum, bill) => sum + Number(bill.points || 0) - Number(bill.redeem || 0), 0);
+            let totalCashback = db.bills.reduce((sum, bill) => sum + Number(bill.cashback || 0), 0);
+            let utilization = totalLimit > 0 ? (totalActiveBill / totalLimit) * 100 : 0;
+
+            document.getElementById('dash-total-bill').innerText = formatRupiah(totalActiveBill);
+            document.getElementById('dash-remaining-limit').innerText = formatRupiah(remainingLimit > 0 ? remainingLimit : 0);
+            document.getElementById('dash-limit-bar').style.width = `${Math.min(utilization, 100)}%`;
+            document.getElementById('dash-limit-bar').className = `h-1 rounded-full transition-all duration-500 ${utilization > 70 ? 'bg-red-500' : 'bg-gray-800 dark:bg-gray-200'}`;
+
+            document.getElementById('dash-total-points').innerText = totalPoints.toLocaleString('id-ID');
+            document.getElementById('dash-total-cashback').innerText = formatRupiah(totalCashback);
+
+            renderCharts(activeBills);
+
+            const tbody = document.getElementById('dash-due-table');
+            tbody.innerHTML = '';
+
+            let displayBills = [...db.bills].sort((a, b) => {
+                if (a.isPaid === b.isPaid) return new Date(a.dueDate) - new Date(b.dueDate);
+                return a.isPaid ? 1 : -1;
+            }).slice(0, 10);
+
+            if (displayBills.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-6 text-center text-sm text-gray-500">Tidak ada data tagihan.</td></tr>`;
+            } else {
+                displayBills.forEach(bill => {
+                    const card = db.cards.find(c => c.id === bill.cardId);
+                    const cardName = card ? `${card.bank} (...${card.last4})` : 'Dihapus';
+
+                    const statusBadge = bill.isPaid
+                        ? `<span class="px-2.5 py-1 text-xs rounded border bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700">Lunas</span>`
+                        : `<span class="px-2.5 py-1 text-xs rounded border bg-red-50 text-red-600 border-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50">Belum Lunas</span>`;
+
+                    const dueInfo = bill.isPaid ? `<span class="text-gray-400 line-through">${formatDate(bill.dueDate)}</span>` : `<span class="${getDueDateStatus(bill.dueDate).class}">${formatDate(bill.dueDate)} <span class="text-xs">(${getDueDateStatus(bill.dueDate).text})</span></span>`;
+
+                    const actionBtn = bill.isPaid
+                        ? `<span class="text-gray-400 text-xs"><i class="fa-solid fa-check"></i> Selesai</span>`
+                        : `<button onclick="markAsPaid('${bill.id}')" class="text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-xs font-medium transition">Tandai Lunas</button>`;
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors';
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">${cardName}</td>
+                        <td class="px-6 py-4 font-medium ${bill.isPaid ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}">${formatRupiah(bill.amount)}</td>
+                        <td class="px-6 py-4">${dueInfo}</td>
+                        <td class="px-6 py-4">${statusBadge}</td>
+                        <td class="px-6 py-4 text-right">${actionBtn}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function markAllAsPaid() {
+            let updated = false;
+            db.bills.forEach(b => {
+                if (!b.isPaid) { b.isPaid = true; updated = true; }
+            });
+            if (updated) {
+                saveData();
+                renderDashboard();
+                showToast("Semua tagihan aktif ditandai lunas!");
+            } else {
+                showToast("Tidak ada tagihan yang tertunggak.");
+            }
+        }
+
+        function markAsPaid(billId) {
+            const billIndex = db.bills.findIndex(b => b.id === billId);
+            if (billIndex > -1) {
+                db.bills[billIndex].isPaid = true;
+                saveData();
+                renderDashboard();
+                showToast("Tagihan lunas!");
+            }
+        }
+
+        function getChartColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                text: isDark ? '#9ca3af' : '#4b5563',
+                grid: isDark ? '#374151' : '#f3f4f6',
+                bar: isDark ? '#e5e7eb' : '#111827',
+                pie: isDark ? ['#f9fafb', '#d1d5db', '#9ca3af', '#4b5563', '#1f2937'] : ['#111827', '#374151', '#6b7280', '#9ca3af', '#e5e7eb']
+            };
+        }
+
+        function renderCharts(activeBills) {
+            const colors = getChartColors();
+
+            // Trend Chart
+            const monthMap = {};
+            const sortedBills = [...db.bills].sort((a, b) => new Date(a.month) - new Date(b.month));
+            sortedBills.forEach(bill => {
+                if (!monthMap[bill.month]) monthMap[bill.month] = 0;
+                monthMap[bill.month] += Number(bill.amount);
+            });
+            const trendLabels = Object.keys(monthMap).slice(-6);
+            const trendData = trendLabels.map(m => monthMap[m]);
+
+            if (trendChartInstance) trendChartInstance.destroy();
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            trendChartInstance = new Chart(ctxTrend, {
+                type: 'bar',
+                data: {
+                    labels: trendLabels.map(m => m.split('-').reverse().join('/')),
+                    datasets: [{ data: trendData, backgroundColor: colors.bar, borderRadius: 4, maxBarThickness: 30 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: colors.grid, drawBorder: false }, ticks: { color: colors.text, callback: val => (val / 1000000).toFixed(1) + 'Jt' } },
+                        x: { grid: { display: false }, ticks: { color: colors.text } }
+                    }
+                }
+            });
+
+            // Composition Chart
+            const cardBillMap = {};
+            activeBills.forEach(bill => {
+                const card = db.cards.find(c => c.id === bill.cardId);
+                const cardName = card ? card.bank : 'Lainnya';
+                if (!cardBillMap[cardName]) cardBillMap[cardName] = 0;
+                cardBillMap[cardName] += Number(bill.amount);
+            });
+
+            if (compositionChartInstance) compositionChartInstance.destroy();
+            const ctxComp = document.getElementById('compositionChart').getContext('2d');
+
+            if (Object.keys(cardBillMap).length > 0) {
+                compositionChartInstance = new Chart(ctxComp, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(cardBillMap),
+                        datasets: [{ data: Object.values(cardBillMap), backgroundColor: colors.pie, borderWidth: 0, hoverOffset: 4 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: '70%',
+                        plugins: { legend: { position: 'right', labels: { color: colors.text, usePointStyle: true, boxWidth: 8 } }, tooltip: { callbacks: { label: (c) => ' ' + formatRupiah(c.raw) } } }
+                    }
+                });
+            }
+        }
+
+        // --- Cards Logic ---
+        function openCardModal(cardId = null) {
+            document.getElementById('form-card').reset();
+            document.getElementById('card-id').value = '';
+            document.getElementById('modal-card-title').innerText = 'Tambah Kartu';
+
+            if (cardId) {
+                const card = db.cards.find(c => c.id === cardId);
+                if (card) {
+                    document.getElementById('modal-card-title').innerText = 'Edit Kartu';
+                    document.getElementById('card-id').value = card.id;
+                    document.getElementById('card-bank').value = card.bank;
+                    document.getElementById('card-last4').value = card.last4;
+                    document.getElementById('card-limit').value = card.limit;
+                    document.getElementById('card-statement').value = card.statement;
+                }
+            }
+            document.getElementById('modal-card').classList.remove('hide');
+        }
+
+        function closeCardModal() { document.getElementById('modal-card').classList.add('hide'); }
+
+        function saveCard(e) {
+            e.preventDefault();
+            const id = document.getElementById('card-id').value;
+            const newCard = {
+                id: id ? id : Date.now().toString(),
+                bank: document.getElementById('card-bank').value,
+                last4: document.getElementById('card-last4').value,
+                limit: document.getElementById('card-limit').value,
+                statement: document.getElementById('card-statement').value
+            };
+
+            if (id) {
+                const idx = db.cards.findIndex(c => c.id === id);
+                db.cards[idx] = newCard;
+                showToast("Kartu diperbarui");
+            } else {
+                db.cards.push(newCard);
+                showToast("Kartu ditambahkan");
+            }
+            saveData(); closeCardModal(); renderCards();
+        }
+
+        function deleteCard(id) {
+            openConfirmModal("Hapus Kartu", "Kartu akan dihapus. Tagihan di riwayat akan tetap ada.", () => {
+                db.cards = db.cards.filter(c => c.id !== id);
+                saveData();
+                renderCards();
+                showToast("Kartu dihapus");
+            });
+        }
+
+        function renderCards() {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = '';
+
+            if (db.cards.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl">Belum ada data kartu.</div>`;
+                return;
+            }
+
+            db.cards.forEach(card => {
+                const div = document.createElement('div');
+                div.className = 'bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm relative flex flex-col justify-between group';
+                div.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <h4 class="font-bold text-gray-900 dark:text-white truncate">${card.bank}</h4>
+                            <div class="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick="openCardModal('${card.id}')" class="text-gray-400 hover:text-gray-900 dark:hover:text-white"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="deleteCard('${card.id}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <p class="text-xl tracking-widest font-mono text-gray-500 dark:text-gray-400 mb-6">•••• •••• •••• ${card.last4}</p>
+                    </div>
+                    <div class="flex justify-between items-end border-t border-gray-100 dark:border-gray-700/50 pt-4 mt-auto">
+                        <div>
+                            <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Limit</p>
+                            <p class="font-medium text-gray-800 dark:text-gray-200 text-sm">${formatRupiah(card.limit)}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Cetak Tgl</p>
+                            <p class="font-medium text-gray-800 dark:text-gray-200 text-sm">${card.statement}</p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // --- Input Bill Logic ---
+        function populateCardSelect() {
+            const select = document.getElementById('bill-card');
+            select.innerHTML = '<option value="">-- Pilih Kartu --</option>';
+            db.cards.forEach(card => {
+                const opt = document.createElement('option');
+                opt.value = card.id;
+                opt.text = `${card.bank} (•• ${card.last4})`;
+                select.appendChild(opt);
+            });
+            document.getElementById('bill-duedate').value = '';
+        }
+
+        function calculateAutoDueDate() {
+            const cardId = document.getElementById('bill-card').value;
+            const dateInput = document.getElementById('bill-duedate');
+
+            if (!cardId) {
+                dateInput.value = '';
+                return;
+            }
+
+            const card = db.cards.find(c => c.id === cardId);
+            if (card) {
+                const today = new Date();
+                let stmtDate = new Date(today.getFullYear(), today.getMonth(), card.statement);
+
+                // Tambah 15 hari
+                const dueDate = new Date(stmtDate);
+                dueDate.setDate(dueDate.getDate() + 15);
+
+                const yyyy = dueDate.getFullYear();
+                const mm = String(dueDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(dueDate.getDate()).padStart(2, '0');
+
+                dateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+        }
+
+        function saveBill(e) {
+            e.preventDefault();
+            const cardId = document.getElementById('bill-card').value;
+            if (!cardId) return;
+
+            const today = new Date();
+            const autoMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+            const newBill = {
+                id: Date.now().toString(),
+                cardId: cardId,
+                month: autoMonth,
+                amount: document.getElementById('bill-amount').value,
+                dueDate: document.getElementById('bill-duedate').value,
+                isPaid: false,
+                points: document.getElementById('bill-points').value || 0,
+                redeem: document.getElementById('bill-redeem').value || 0,
+                cashback: document.getElementById('bill-cashback').value || 0
+            };
+
+            db.bills.push(newBill);
+            saveData();
+            showToast("Tagihan dicatat!");
+            document.getElementById('form-bill').reset();
+            navigate('dashboard');
+        }
+
+        // --- History Logic ---
+        function renderHistory() {
+            const tbody = document.getElementById('history-table');
+            tbody.innerHTML = '';
+
+            const paidBills = db.bills.filter(b => b.isPaid).sort((a, b) => new Date(b.month) - new Date(a.month));
+
+            if (paidBills.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-6 text-center text-sm text-gray-500">Belum ada riwayat tagihan lunas.</td></tr>`;
+                return;
+            }
+
+            paidBills.forEach(bill => {
+                const card = db.cards.find(c => c.id === bill.cardId);
+                const cardName = card ? card.bank : 'Dihapus';
+                const rewardText = `+${bill.points} Pt | ${formatRupiah(bill.cashback)}`;
+
+                const tr = document.createElement('tr');
+                tr.className = 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors';
+                tr.innerHTML = `
+                    <td class="px-6 py-4">${bill.month}</td>
+                    <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">${cardName}</td>
+                    <td class="px-6 py-4 text-gray-800 dark:text-gray-200">${formatRupiah(bill.amount)}</td>
+                    <td class="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">${rewardText}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="deleteBill('${bill.id}')" class="text-red-400 hover:text-red-600 transition"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function deleteBill(billId) {
+            openConfirmModal("Hapus Riwayat", "Data tagihan ini akan dihapus permanen.", () => {
+                db.bills = db.bills.filter(b => b.id !== billId);
+                saveData();
+                renderHistory();
+                showToast("Arsip dihapus");
+            });
+        }
+
+        function deleteAllHistory() {
+            const paidCount = db.bills.filter(b => b.isPaid).length;
+            if (paidCount === 0) return showToast("Tidak ada riwayat untuk dihapus.");
+
+            openConfirmModal("Hapus Semua Riwayat", "Yakin ingin menghapus seluruh riwayat tagihan lunas secara permanen?", () => {
+                db.bills = db.bills.filter(b => !b.isPaid);
+                saveData();
+                renderHistory();
+                showToast("Semua riwayat lunas dihapus");
+            });
+        }
+
+        // Initialize App
+        window.onload = () => {
+            // Tunggu autentikasi PIN sebelum merender dasbor
+            initPinScreen();
+        };
+    </script>
+</body>
+
+</html>
