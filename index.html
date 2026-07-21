@@ -380,12 +380,16 @@
         // Konfigurasi Firebase
         // CATATAN UNTUK DEPLOYMENT VERCEL ANDA: 
         // Ganti fallback di bawah ini dengan config dari Firebase Console milik Anda.
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            // apiKey: "API_KEY_ANDA",
-            // authDomain: "DOMAIN_ANDA.firebaseapp.com",
-            // projectId: "PROJECT_ID_ANDA",
-            // ... (Dapatkan dari Firebase Console -> Project Settings)
-        };
+        const firebaseConfig = {
+    apiKey: "AIzaSyBw_L04xsjIg4EukjZgm6Ckdl6a_ZHkoWA",
+    authDomain: "cc-management-c2a4d.firebaseapp.com",
+    projectId: "cc-management-c2a4d",
+    storageBucket: "cc-management-c2a4d.firebasestorage.app",
+    messagingSenderId: "509969972932",
+    appId: "1:509969972932:web:c7555fd28142668a27d391",
+    measurementId: "G-K0TN38KHDR"
+  };
+
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
