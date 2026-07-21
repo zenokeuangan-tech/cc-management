@@ -41,27 +41,37 @@
     </style>
 </head>
 
-<body class="text-gray-800 bg-gray-50 dark:bg-gray-900 dark:text-gray-100 h-screen flex overflow-hidden">
+<body class="text-gray-800 bg-gray-50 dark:bg-gray-900 dark:text-gray-100 h-[100dvh] flex overflow-hidden">
 
     <!-- Latar Autentikasi (Google Login Overlay) -->
     <div id="auth-overlay"
-        class="fixed inset-0 bg-gray-50 dark:bg-gray-950 z-[100] flex flex-col items-center justify-center transition-opacity duration-300">
-        <div class="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-xl max-w-sm w-full text-center border border-gray-200 dark:border-gray-800">
-            <div class="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fa-solid fa-cloud text-2xl text-blue-600 dark:text-blue-400"></i>
+        class="fixed inset-0 bg-white dark:bg-gray-950 z-[100] flex flex-col transition-opacity duration-500 overflow-y-auto">
+        <div class="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-2xl mx-auto w-full mt-10">
+            <div class="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                <i class="fa-solid fa-credit-card text-3xl text-blue-600 dark:text-blue-400"></i>
             </div>
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">CC Tracker Cloud</h2>
-            <p id="auth-status" class="text-sm text-gray-500 dark:text-gray-400 mb-6">Memeriksa sesi login...</p>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">Kendalikan Kartu Kreditmu.</h1>
+            <p class="text-base md:text-lg text-gray-600 dark:text-gray-400 mb-10 leading-relaxed">
+                Pantau seluruh tagihan, sisa limit, dan tanggal jatuh tempo di satu tempat. Tersinkronisasi aman dengan cloud. Gratis dan mudah digunakan.
+            </p>
 
-            <div id="auth-loading" class="mb-4">
-                <i class="fa-solid fa-spinner fa-spin text-2xl text-gray-400"></i>
+            <div class="bg-gray-50 dark:bg-gray-900 p-6 md:p-8 rounded-2xl w-full max-w-sm border border-gray-100 dark:border-gray-800 shadow-xl">
+                <p id="auth-status" class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">Memeriksa sesi Anda...</p>
+
+                <div id="auth-loading" class="mb-2">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl text-blue-500"></i>
+                </div>
+
+                <button id="btn-google-login" onclick="loginWithGoogle()"
+                    class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 text-gray-800 dark:text-gray-100 py-3 px-4 rounded-xl font-semibold transition flex items-center justify-center gap-3 hide shadow-sm">
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-5 h-5">
+                    Masuk dengan Google
+                </button>
             </div>
-
-            <button id="btn-google-login" onclick="loginWithGoogle()"
-                class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 py-3 px-4 rounded-xl font-medium transition flex items-center justify-center gap-3 hide shadow-sm">
-                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-5 h-5">
-                Lanjutkan dengan Google
-            </button>
+        </div>
+        <!-- Footer Landing Page -->
+        <div class="py-8 text-center text-sm text-gray-400 dark:text-gray-600">
+            &copy; 2024 CC Tracker. Aman & Terlindungi.
         </div>
     </div>
 
@@ -141,6 +151,14 @@
             </div>
             <div class="flex items-center gap-4">
                 <span class="text-xs text-gray-400 hidden sm:block" id="user-email">email@example.com</span>
+                
+                <!-- Tombol Login Google (Untuk Guest) -->
+                <button id="header-login-btn" onclick="loginWithGoogle()"
+                    class="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 text-gray-700 dark:text-gray-200 py-1.5 px-4 rounded-full text-sm font-medium transition shadow-sm hide">
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-4 h-4">
+                    <span class="hidden sm:inline">Masuk Google</span>
+                </button>
+
                 <!-- Tombol Tema -->
                 <button onclick="toggleTheme()"
                     class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
@@ -148,15 +166,17 @@
                     <i class="fa-solid fa-moon dark:hidden text-lg"></i>
                     <i class="fa-solid fa-sun hidden dark:block text-lg"></i>
                 </button>
-                <img id="user-avatar" src="" alt="Avatar" class="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 hide object-cover border border-gray-300 dark:border-gray-600">
-                <div id="user-initial" class="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm hide">
+                <img id="user-avatar" src="" alt="Avatar"
+                    class="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 hide object-cover border border-gray-300 dark:border-gray-600">
+                <div id="user-initial"
+                    class="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm hide">
                     A
                 </div>
             </div>
         </header>
 
         <!-- Scrollable Content Area -->
-        <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8" id="main-content">
+        <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 pb-24 md:p-8 md:pb-8" id="main-content">
 
             <!-- VIEW: DASHBOARD -->
             <div id="view-dashboard" class="view-section">
@@ -400,8 +420,8 @@
         let userId = null;
         let dbRef = null;
 
-        // State Aplikasi
-        let db = { cards: [], bills: [] };
+        // State Aplikasi (Muat dari LocalStorage untuk Guest)
+        let db = JSON.parse(localStorage.getItem('cctracker_guest_db')) || { cards: [], bills: [] };
         let trendChartInstance = null;
         let compositionChartInstance = null;
         let confirmAction = null;
@@ -409,9 +429,13 @@
         // Ekspos fungsi ke Window agar bisa dipanggil dari atribut onclick di HTML
         window.loginWithGoogle = async () => {
             try {
+                // Tampilkan overlay loading saat proses login
+                document.getElementById('auth-overlay').classList.remove('hide');
+                setTimeout(() => document.getElementById('auth-overlay').classList.remove('opacity-0'), 10);
                 document.getElementById('auth-loading').classList.remove('hide');
+                document.getElementById('auth-status').innerText = 'Menghubungkan ke Google...';
                 document.getElementById('btn-google-login').classList.add('hide');
-                
+
                 // Gunakan Custom Token jika berada dalam environment yang mensyaratkan (aturan prompt)
                 if (typeof __initial_auth_token !== 'undefined') {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -438,8 +462,9 @@
             if (user) {
                 // Berhasil Login
                 userId = user.uid;
-                
+
                 // Set UI Profil
+                document.getElementById('header-login-btn').classList.add('hide');
                 if (user.photoURL) {
                     const avatar = document.getElementById('user-avatar');
                     avatar.src = user.photoURL;
@@ -481,17 +506,31 @@
                 }
 
             } else {
-                // Belum Login
-                document.getElementById('auth-status').innerText = 'Silakan login untuk menyinkronkan data Anda.';
-                document.getElementById('auth-loading').classList.add('hide');
-                document.getElementById('btn-google-login').classList.remove('hide');
-                document.getElementById('auth-overlay').classList.remove('hide', 'opacity-0');
+                // Belum Login (Mode Tamu)
+                userId = null;
+                document.getElementById('auth-overlay').classList.add('opacity-0');
+                
+                // Sembunyikan overlay dan tampilkan tombol login di header
+                setTimeout(() => {
+                    document.getElementById('auth-overlay').classList.add('hide');
+                    document.getElementById('header-login-btn').classList.remove('hide');
+                    
+                    document.getElementById('user-initial').classList.add('hide');
+                    document.getElementById('user-avatar').classList.add('hide');
+                    document.getElementById('user-email').innerText = 'Mode Tamu (Lokal)';
+                    
+                    window.navigate('dashboard');
+                }, 300);
             }
         });
 
         // --- Fungsi Sinkronisasi ke Firestore ---
         async function syncDataToCloud() {
-            if (!userId || !dbRef) return; // RULE 3: Guard operation
+            if (!userId || !dbRef) {
+                // Simpan ke LocalStorage jika belum login (Guest Mode) agar data mereka tidak hilang saat refresh
+                localStorage.setItem('cctracker_guest_db', JSON.stringify(db));
+                return; 
+            }
             try {
                 await setDoc(dbRef, db);
             } catch (error) {
